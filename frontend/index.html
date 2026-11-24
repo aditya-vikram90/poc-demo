@@ -1,0 +1,4 @@
+<!doctype html><html><body style="font-family:sans-serif;text-align:center;margin-top:60px">
+<h2>DC-DR demo</h2><button onclick="hit()">Hit backend</button><pre id="out"></pre>
+<script>function hit(){fetch('/api/hit').then(r=>r.json()).then(j=>out.textContent=JSON.stringify(j,null,2))}</script>
+</body></html>

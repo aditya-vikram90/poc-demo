@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata: {generateName: poc-build-, namespace: ci}
+spec:
+  pipelineRef: {name: poc-build}
+  params: [{name: REPO, value: "github.com/aditya-vikram90/poc-demo.git"}]
+  workspaces:
+  - name: shared
+    volumeClaimTemplate:
+      spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 1Gi}}}

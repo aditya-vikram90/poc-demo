@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata: {name: poc-build, namespace: ci}
+spec:
+  params: [{name: REPO}]
+  workspaces: [{name: shared}]
+  tasks:
+  - name: clone
+    taskRef: {name: git-clone-simple}
+    params: [{name: URL, value: "https://$(params.REPO)"}]
+    workspaces: [{name: source, workspace: shared}]
+  - name: build-backend
+    runAfter: [clone]
+    taskRef: {name: build-push-both}
+    params:
+    - {name: IMAGE_NAME, value: poc-backend}
+    - {name: TAG, value: $(tasks.clone.results.sha)}
+    - {name: CONTEXT, value: backend}
+    workspaces: [{name: source, workspace: shared}]
+  - name: build-frontend
+    runAfter: [build-backend]
+    taskRef: {name: build-push-both}
+    params:
+    - {name: IMAGE_NAME, value: poc-frontend}
+    - {name: TAG, value: $(tasks.clone.results.sha)}
+    - {name: CONTEXT, value: frontend}
+    workspaces: [{name: source, workspace: shared}]
+  - name: update-gitops
+    runAfter: [build-frontend]
+    taskRef: {name: update-gitops}
+    params:
+    - {name: REPO, value: $(params.REPO)}
+    - {name: TAG, value: $(tasks.clone.results.sha)}

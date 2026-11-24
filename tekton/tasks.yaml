@@ -1,0 +1,62 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: git-clone-simple, namespace: ci}
+spec:
+  params: [{name: URL}]
+  workspaces: [{name: source}]
+  results: [{name: sha}]
+  steps:
+  - name: clone
+    image: alpine/git
+    script: |
+      set -e
+      git clone --depth 1 $(params.URL) $(workspaces.source.path)
+      git -C $(workspaces.source.path) rev-parse --short HEAD | tr -d '\n' > $(results.sha.path)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: build-push-both, namespace: ci}
+spec:
+  params:
+  - {name: IMAGE_NAME}
+  - {name: TAG}
+  - {name: CONTEXT}
+  - {name: REGISTRY_DC, default: "172.30.0.250:5000"}
+  - {name: REGISTRY_DR, default: "172.30.0.251:5000"}
+  workspaces: [{name: source}]
+  steps:
+  - name: build-push
+    image: quay.io/buildah/stable:latest
+    workingDir: $(workspaces.source.path)
+    securityContext: {privileged: true}
+    env: [{name: STORAGE_DRIVER, value: vfs}]
+    script: |
+      set -e
+      DC=$(params.REGISTRY_DC)/$(params.IMAGE_NAME):$(params.TAG)
+      DR=$(params.REGISTRY_DR)/$(params.IMAGE_NAME):$(params.TAG)
+      buildah build -f $(params.CONTEXT)/Dockerfile -t $DC -t $DR $(params.CONTEXT)
+      buildah push --tls-verify=false $DC
+      buildah push --tls-verify=false $DR
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: update-gitops, namespace: ci}
+spec:
+  params: [{name: REPO}, {name: TAG}]
+  steps:
+  - name: update
+    image: alpine/git
+    env:
+    - name: GIT_TOKEN
+      valueFrom: {secretKeyRef: {name: gitops-git, key: token}}
+    script: |
+      set -e
+      cd /tmp
+      git clone https://oauth2:${GIT_TOKEN}@$(params.REPO) r
+      cd r
+      sed -i "s|image: poc-backend:.*|image: poc-backend:$(params.TAG)|" deploy/base/backend.yaml
+      sed -i "s|image: poc-frontend:.*|image: poc-frontend:$(params.TAG)|" deploy/base/frontend.yaml
+      git config user.email tekton@poc.local
+      git config user.name tekton
+      git commit -am "deploy $(params.TAG)"
+      git push origin main

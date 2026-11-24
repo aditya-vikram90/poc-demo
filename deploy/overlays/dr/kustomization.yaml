@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [../../base]
+images:
+- {name: poc-backend,  newName: 172.30.0.251:5000/poc-backend}
+- {name: poc-frontend, newName: 172.30.0.251:5000/poc-frontend}
+replicas:
+- {name: backend, count: 0}
+- {name: frontend, count: 0}
+patches:
+- target: {kind: Deployment, name: backend}
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value: {name: SITE, value: DR}

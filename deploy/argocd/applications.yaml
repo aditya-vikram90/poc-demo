@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: poc-dc, namespace: argocd}
+spec:
+  project: default
+  source: {repoURL: "https://github.com/aditya-vikram90/poc-demo.git", targetRevision: main, path: deploy/overlays/dc}
+  destination: {server: "https://kubernetes.default.svc", namespace: poc}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: poc-dr, namespace: argocd}
+spec:
+  project: default
+  source: {repoURL: "https://github.com/aditya-vikram90/poc-demo.git", targetRevision: main, path: deploy/overlays/dr}
+  destination: {name: dr-cluster, namespace: poc}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
