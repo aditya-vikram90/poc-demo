@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: poc-frontend:2a76805
+        image: poc-frontend:a5d56ba
         ports: [{containerPort: 80}]
 ---
 apiVersion: v1
